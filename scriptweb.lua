@@ -49,52 +49,45 @@ local function getPets()
     return equipped, unequipped
 end
 
-local function transmitPayload()
+local function forceTransmit()
     local sheckles = 0
     if LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Sheckles") then
         sheckles = LocalPlayer.leaderstats.Sheckles.Value
     end
 
     local eq, uneq = getPets()
-    local currentPetsString = HttpService:JSONEncode({eq, uneq})
+    local payload = {
+        apiKey = API_KEY,
+        username = LocalPlayer.Name,
+        sheckles = sheckles,
+        equippedPets = eq,
+        unequippedPets = uneq
+    }
 
-    if sheckles ~= lastSheckles or currentPetsString ~= lastPetsString then
-        lastSheckles = sheckles
-        lastPetsString = currentPetsString
-
-        local payload = {
-            apiKey = API_KEY,
-            username = LocalPlayer.Name,
-            sheckles = sheckles,
-            equippedPets = eq,
-            unequippedPets = uneq
-        }
-
-        pcall(function()
-            HttpService:PostAsync(
-                ENDPOINT,
-                HttpService:JSONEncode(payload),
-                Enum.HttpContentType.ApplicationJson,
-                false
-            )
-        end)
-    end
+    pcall(function()
+        HttpService:PostAsync(
+            ENDPOINT,
+            HttpService:JSONEncode(payload),
+            Enum.HttpContentType.ApplicationJson,
+            false
+        )
+    end)
 end
 
 task.spawn(function()
     if LocalPlayer:WaitForChild("leaderstats", 10) and LocalPlayer.leaderstats:WaitForChild("Sheckles", 10) then
-        LocalPlayer.leaderstats.Sheckles.Changed:Connect(transmitPayload)
+        LocalPlayer.leaderstats.Sheckles.Changed:Connect(forceTransmit)
     end
 
     if LocalPlayer:WaitForChild("Petequip", 10) then
-        LocalPlayer.Petequip.ChildAdded:Connect(transmitPayload)
-        LocalPlayer.Petequip.ChildRemoved:Connect(transmitPayload)
+        LocalPlayer.Petequip.ChildAdded:Connect(forceTransmit)
+        LocalPlayer.Petequip.ChildRemoved:Connect(forceTransmit)
     end
 
     if LocalPlayer:WaitForChild("Backpack", 10) then
-        LocalPlayer.Backpack.ChildAdded:Connect(transmitPayload)
-        LocalPlayer.Backpack.ChildRemoved:Connect(transmitPayload)
+        LocalPlayer.Backpack.ChildAdded:Connect(forceTransmit)
+        LocalPlayer.Backpack.ChildRemoved:Connect(forceTransmit)
     end
 
-    transmitPayload()
+    forceTransmit()
 end)
