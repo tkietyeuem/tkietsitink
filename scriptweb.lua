@@ -49,39 +49,52 @@ local function getPets()
     return equipped, unequipped
 end
 
-local function transmitPayload(sheckles, eq, uneq)
-    local payload = {
-        apiKey = API_KEY,
-        username = LocalPlayer.Name,
-        sheckles = sheckles,
-        equippedPets = eq,
-        unequippedPets = uneq
-    }
+local function transmitPayload()
+    local sheckles = 0
+    if LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Sheckles") then
+        sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    end
 
-    pcall(function()
-        HttpService:PostAsync(
-            ENDPOINT,
-            HttpService:JSONEncode(payload),
-            Enum.HttpContentType.ApplicationJson,
-            false
-        )
-    end)
+    local eq, uneq = getPets()
+    local currentPetsString = HttpService:JSONEncode({eq, uneq})
+
+    if sheckles ~= lastSheckles or currentPetsString !== lastPetsString then
+        lastSheckles = sheckles
+        lastPetsString = currentPetsString
+
+        local payload = {
+            apiKey = API_KEY,
+            username = LocalPlayer.Name,
+            sheckles = sheckles,
+            equippedPets = eq,
+            unequippedPets = uneq
+        }
+
+        pcall(function()
+            HttpService:PostAsync(
+                ENDPOINT,
+                HttpService:JSONEncode(payload),
+                Enum.HttpContentType.ApplicationJson,
+                false
+            )
+        end)
+    end
 end
 
 task.spawn(function()
-    while task.wait(1) do
-        local sheckles = 0
-        if LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Sheckles") then
-            sheckles = LocalPlayer.leaderstats.Sheckles.Value
-        end
-
-        local eq, uneq = getPets()
-        local currentPetsString = HttpService:JSONEncode({eq, uneq})
-
-        if sheckles ~= lastSheckles or currentPetsString ~= lastPetsString then
-            lastSheckles = sheckles
-            lastPetsString = currentPetsString
-            transmitPayload(sheckles, eq, uneq)
-        end
+    if LocalPlayer:WaitForChild("leaderstats", 10) and LocalPlayer.leaderstats:WaitForChild("Sheckles", 10) then
+        LocalPlayer.leaderstats.Sheckles.Changed:Connect(transmitPayload)
     end
+
+    if LocalPlayer:WaitForChild("Petequip", 10) then
+        LocalPlayer.Petequip.ChildAdded:Connect(transmitPayload)
+        LocalPlayer.Petequip.ChildRemoved:Connect(transmitPayload)
+    end
+
+    if LocalPlayer:WaitForChild("Backpack", 10) then
+        LocalPlayer.Backpack.ChildAdded:Connect(transmitPayload)
+        LocalPlayer.Backpack.ChildRemoved:Connect(transmitPayload)
+    end
+
+    transmitPayload()
 end)
