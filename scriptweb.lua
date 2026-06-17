@@ -20,23 +20,22 @@ local AllowedPets = {
     ["Ice Serpent"] = true
 }
 
-local lastSheckles = -1
-local lastPetsString = ""
-
 local function getPets()
     local equipped = {}
     local unequipped = {}
 
-    if LocalPlayer:FindFirstChild("Petequip") then
-        for _, pet in ipairs(LocalPlayer.Petequip:GetChildren()) do
+    local petequip = LocalPlayer:FindFirstChild("Petequip") or LocalPlayer:FindFirstChild("petequip") or LocalPlayer:FindFirstChild("PetEquip")
+    if petequip then
+        for _, pet in ipairs(petequip:GetChildren()) do
             if AllowedPets[pet.Name] then
                 table.insert(equipped, pet.Name)
             end
         end
     end
 
-    if LocalPlayer:FindFirstChild("Backpack") then
-        for _, item in ipairs(LocalPlayer.Backpack:GetChildren()) do
+    local backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:FindFirstChild("backpack")
+    if backpack then
+        for _, item in ipairs(backpack:GetChildren()) do
             if AllowedPets[item.Name] then
                 table.insert(unequipped, item.Name)
             end
@@ -45,14 +44,20 @@ local function getPets()
 
     table.sort(equipped)
     table.sort(unequipped)
-
     return equipped, unequipped
 end
 
 local function forceTransmit()
     local sheckles = 0
-    if LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Sheckles") then
-        sheckles = LocalPlayer.leaderstats.Sheckles.Value
+    
+    for _, child in ipairs(LocalPlayer:GetChildren()) do
+        if child.Name:lower() == "leaderstats" then
+            local sVal = child:FindFirstChild("Sheckles") or child:FindFirstChild("sheckles") or child:FindFirstChild("Money")
+            if sVal and sVal:IsA("ValueBase") then
+                sheckles = sVal.Value
+                break
+            end
+        end
     end
 
     local eq, uneq = getPets()
@@ -64,29 +69,43 @@ local function forceTransmit()
         unequippedPets = uneq
     }
 
-    pcall(function()
-        HttpService:PostAsync(
+    local success, result = pcall(function()
+        return HttpService:PostAsync(
             ENDPOINT,
             HttpService:JSONEncode(payload),
             Enum.HttpContentType.ApplicationJson,
             false
         )
     end)
+
+    if not success then
+        warn("RENDER NET ERROR: " .. tostring(result))
+    else
+        print("RENDER NET SUCCESS: Data transmitted successfully!")
+    end
 end
 
 task.spawn(function()
-    if LocalPlayer:WaitForChild("leaderstats", 10) and LocalPlayer.leaderstats:WaitForChild("Sheckles", 10) then
-        LocalPlayer.leaderstats.Sheckles.Changed:Connect(forceTransmit)
+    for _, child in ipairs(LocalPlayer:GetChildren()) do
+        if child.Name:lower() == "leaderstats" then
+            for _, val in ipairs(child:GetChildren()) do
+                if val.Name:lower() == "sheckles" or val.Name:lower() == "money" then
+                    val.Changed:Connect(forceTransmit)
+                end
+            end
+        end
     end
 
-    if LocalPlayer:WaitForChild("Petequip", 10) then
-        LocalPlayer.Petequip.ChildAdded:Connect(forceTransmit)
-        LocalPlayer.Petequip.ChildRemoved:Connect(forceTransmit)
+    local petequip = LocalPlayer:FindFirstChild("Petequip") or LocalPlayer:FindFirstChild("petequip") or LocalPlayer:FindFirstChild("PetEquip")
+    if petequip then
+        petequip.ChildAdded:Connect(forceTransmit)
+        petequip.ChildRemoved:Connect(forceTransmit)
     end
 
-    if LocalPlayer:WaitForChild("Backpack", 10) then
-        LocalPlayer.Backpack.ChildAdded:Connect(forceTransmit)
-        LocalPlayer.Backpack.ChildRemoved:Connect(forceTransmit)
+    local backpack = LocalPlayer:FindFirstChild("Backpack") or LocalPlayer:FindFirstChild("backpack")
+    if backpack then
+        backpack.ChildAdded:Connect(forceTransmit)
+        backpack.ChildRemoved:Connect(forceTransmit)
     end
 
     forceTransmit()
