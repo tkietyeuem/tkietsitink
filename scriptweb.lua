@@ -2,7 +2,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 local LocalPlayer = Players.LocalPlayer
-local ENDPOINT = "https://dashboard-plvx.onrender.com/api/update"
+local ENDPOINT = "https://dashboard-i1e6.onrender.com/api/update"
 local API_KEY = getgenv().Key or "fallback-token"
 
 local AllowedPets = {
@@ -58,7 +58,7 @@ local function transmitPayload()
     local eq, uneq = getPets()
     local currentPetsString = HttpService:JSONEncode({eq, uneq})
 
-    if sheckles ~= lastSheckles or currentPetsString !== lastPetsString then
+    if sheckles ~= lastSheckles or currentPetsString ~= lastPetsString then
         lastSheckles = sheckles
         lastPetsString = currentPetsString
 
